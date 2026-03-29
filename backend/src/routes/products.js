@@ -7,6 +7,7 @@ const { err } = require('../middleware/error');
 const { sanitizeText } = require('../utils/sanitize');
 const { sendBackInStockEmail } = require('../utils/mailer');
 const AutomaticOrderProcessor = require('../services/AutomaticOrderProcessor');
+const { recordEvent } = require('../utils/traceability');
 
 function normalizePreorderInput(body) {
   const isPreorder =
@@ -626,6 +627,7 @@ router.post('/', auth, validate.product, async (req, res) => {
     'INSERT INTO products (farmer_id, name, description, category, price, quantity, unit, image_url, low_stock_threshold, nutrition) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id',
     [req.user.id, safeName, safeDescription, safeCategory, price, quantity, safeUnit, safeImageUrl, parseInt(req.body.low_stock_threshold) || 5, nutrition ? JSON.stringify(nutrition) : null]
   );
+  recordEvent({ productId: rows[0].id, eventType: 'listed' });
   res.json({ success: true, id: rows[0].id, message: 'Product listed' });
 });
 

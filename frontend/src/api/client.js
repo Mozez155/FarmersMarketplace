@@ -432,6 +432,9 @@ export const api = {
   initiateCoopTx: (id, body) => request(`/cooperatives/${id}/transactions`, { method: 'POST', body }),
   signPendingTx: (txId) => request(`/cooperatives/transactions/${txId}/sign`, { method: 'POST' }),
   getPendingTxs: (coopId) => request(`/cooperatives/${coopId}/pending`),
+  // Traceability
+  getOrderTrace: (orderId) => request(`/orders/${orderId}/trace`),
+
   // Platform fee
   getFeePreview: (amount) => request(`/orders/fee-preview?amount=${amount}`),
   // Account alerts
