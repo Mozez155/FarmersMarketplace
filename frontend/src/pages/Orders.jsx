@@ -6,6 +6,46 @@ import Spinner from '../components/Spinner';
 const ALL_STATUSES = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'failed'];
 const FILTER_TABS = ['all', ...ALL_STATUSES];
 
+const EVENT_ICON = { listed: '🌱', sold: '🛒', shipped: '🚚', delivered: '📦', harvested: '🌾' };
+
+function TraceTimeline({ orderId }) {
+  const [events, setEvents] = React.useState(null);
+  const [open, setOpen] = React.useState(false);
+
+  async function load() {
+    if (events) { setOpen(o => !o); return; }
+    try {
+      const res = await api.getOrderTrace(orderId);
+      setEvents(res.data ?? []);
+      setOpen(true);
+    } catch { setEvents([]); setOpen(true); }
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button onClick={load} style={{ background: 'none', border: '1px solid #d8f3dc', borderRadius: 6, padding: '3px 10px', fontSize: 12, color: '#2d6a4f', cursor: 'pointer', fontWeight: 600 }}>
+        🌿 {open ? 'Hide' : 'Show'} Traceability
+      </button>
+      {open && events && (
+        <div style={{ marginTop: 8, paddingLeft: 8, borderLeft: '2px solid #d8f3dc' }}>
+          {events.length === 0
+            ? <div style={{ fontSize: 12, color: '#aaa' }}>No traceability events yet.</div>
+            : events.map(e => (
+              <div key={e.id} style={{ fontSize: 12, color: '#444', marginBottom: 6 }}>
+                <span style={{ marginRight: 6 }}>{EVENT_ICON[e.event_type] || '📌'}</span>
+                <strong>{e.event_type}</strong>
+                {e.description ? ` — ${e.description}` : ''}
+                {e.location ? <span style={{ color: '#888' }}> · 📍 {e.location}</span> : ''}
+                <span style={{ color: '#bbb', marginLeft: 8 }}>{new Date(e.created_at).toLocaleString()}</span>
+              </div>
+            ))
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
 const STATUS_STYLE = {
   paid:       { bg: '#d8f3dc', color: '#2d6a4f' },
   pending:    { bg: '#fff3cd', color: '#856404' },
@@ -207,6 +247,7 @@ export default function Orders() {
                     </div>
                   )}
                   <StatusTimeline status={o.status} />
+                  <TraceTimeline orderId={o.id} />
                   {o.escrow_status && o.escrow_status !== 'none' && (
                     <div style={{ marginTop: 8 }}>
                       <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, fontWeight: 600,

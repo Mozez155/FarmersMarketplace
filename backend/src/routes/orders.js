@@ -21,6 +21,7 @@ const { sendPushToUser } = require('../utils/pushNotifications');
 const { err } = require('../middleware/error');
 const { getCachedResponse, cacheResponse } = require('../utils/idempotency');
 const { resolveCoupon, calcDiscount } = require('./coupons');
+const { recordEvent } = require('../utils/traceability');
 
 function parsePreorderUnlockUnix(preorderDeliveryDate) {
   const ms = Date.parse(`${preorderDeliveryDate}T00:00:00Z`);
@@ -423,6 +424,9 @@ router.post('/', auth, validate.order, async (req, res) => {
 
     await db.query('UPDATE orders SET status = $1, stellar_tx_hash = $2 WHERE id = $3', ['paid', txHash, orderId]);
 
+    // Record traceability: sold event
+    recordEvent({ productId: product_id, orderId, eventType: 'sold' });
+
     // Referral bonus
     if (buyer.referred_by && buyer.referral_bonus_sent === 0) {
       const { rows: refRows } = await db.query('SELECT stellar_public_key FROM users WHERE id = $1', [buyer.referred_by]);
@@ -695,6 +699,11 @@ router.patch('/:id/status', auth, async (req, res) => {
   if (!order) return err(res, 404, 'Order not found or not yours', 'not_found');
 
   await db.query('UPDATE orders SET status = $1 WHERE id = $2', [status, order.id]);
+
+  // Record traceability event for shipped/delivered
+  if (status === 'shipped' || status === 'delivered') {
+    recordEvent({ productId: order.product_id, orderId: order.id, eventType: status });
+  }
 
   sendStatusUpdateEmail({
     order,
